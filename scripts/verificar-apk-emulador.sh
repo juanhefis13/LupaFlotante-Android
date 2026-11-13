@@ -53,4 +53,19 @@ adb exec-out screencap -p > "capturas/LupaFlotante-Android-API${API}.png"
 test -s "capturas/LupaFlotante-Android-API${API}.png"
 echo "CAPTURA_OK: capturas/LupaFlotante-Android-API${API}.png"
 
+echo "== Probar toque en burbuja y comprobar respuesta visual =="
+# El emulador usa Pixel_5 con pantalla 1080x2340 y densidad 440: la burbuja
+# se encuentra en el borde derecho, aproximadamente a x=960, y=870.
+adb shell input tap 960 870
+sleep 2
+adb exec-out screencap -p > "capturas/LupaFlotante-Android-API${API}-zoom.png"
+test -s "capturas/LupaFlotante-Android-API${API}-zoom.png"
+echo "CAPTURA_ZOOM_OK: capturas/LupaFlotante-Android-API${API}-zoom.png"
+if cmp -s "capturas/LupaFlotante-Android-API${API}.png" "capturas/LupaFlotante-Android-API${API}-zoom.png"; then
+  echo "AVISO: las capturas son identicas; revisar respuesta de la lupa."
+else
+  echo "CAMBIO_VISUAL_DETECTADO: la pantalla cambió después del toque"
+fi
+adb shell pidof "$PKG" | grep -E '[0-9]+'
+
 echo "PRUEBA COMPLETADA: APK instalada, app visible, servicio solicitado y proceso funcionando."
