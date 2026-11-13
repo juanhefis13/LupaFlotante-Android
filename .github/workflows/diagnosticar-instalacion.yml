@@ -9,11 +9,11 @@ on:
 jobs:
   instalar-y-abrir:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        api-level: [34, 35]
+        api-level: [33, 36]
     permissions:
       contents: read
     steps:
@@ -41,3 +41,11 @@ jobs:
           profile: pixel_5
           emulator-boot-timeout: 600
           script: bash scripts/verificar-apk-emulador.sh app-a-probar.apk
+
+      - name: Adjuntar captura de la aplicacion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pantalla-Lupa-Flotante-API-${{ matrix.api-level }}
+          path: capturas/*.png
+          if-no-files-found: ignore
