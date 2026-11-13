@@ -77,7 +77,7 @@ jobs:
           echo "$INFO" | grep -q "sdkVersion:'26'"
           echo "$INFO" | grep -q "application: label='Lupa Flotante'"
           # El optimizador de recursos puede renombrar ic_app.xml (ej. res/qG.xml).
-          ICON=$(printf '%s\n' "$INFO" | sed -nE "s/^application: .* icon='([^']+)'.*/\\1/p" | head -1)
+          ICON=$(printf '%s\n' "$INFO" | sed -nE "s/^application: .* icon='([^']+)'.*/\1/p" | head -1)
           test -n "$ICON"
           unzip -Z1 "$APK" | grep -Fx "$ICON"
           "$BUILD_TOOLS/apksigner" verify --min-sdk-version 26 "$APK"
