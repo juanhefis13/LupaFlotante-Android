@@ -23,7 +23,6 @@ jobs:
         run: |
           set -e
           SDKMANAGER=$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
-          echo "sdkmanager: $SDKMANAGER"
           "$SDKMANAGER" --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Configurar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -31,9 +30,20 @@ jobs:
           gradle-version: '8.9'
       - name: Compilar APK Android debug
         run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Verificar paquete y firma del APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -E "^(package:|sdkVersion:|targetSdkVersion:|application:|application-icon-)"
+          mkdir -p dist
+          cp "$APK" dist/LupaFlotante-v1.1.apk
+          sha256sum dist/LupaFlotante-v1.1.apk
       - name: Guardar APK para descargar
         uses: actions/upload-artifact@v4
         with:
-          name: LupaFlotante-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: LupaFlotante-APK-v1.1
+          path: dist/LupaFlotante-v1.1.apk
           if-no-files-found: error
