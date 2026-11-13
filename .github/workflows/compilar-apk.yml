@@ -1,4 +1,4 @@
-name: Compilar APK de Lupa Flotante
+name: Compilar APK release firmado de Lupa Flotante
 
 on:
   workflow_dispatch:
@@ -6,10 +6,12 @@ on:
     branches: [main]
 
 jobs:
-  apk:
+  release:
+    name: Construir y verificar APK release
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+
     steps:
       - name: Descargar codigo
         uses: actions/checkout@v4
@@ -21,29 +23,69 @@ jobs:
       - name: Instalar Android SDK 35
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           SDKMANAGER=$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
           "$SDKMANAGER" --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Configurar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Compilar APK Android debug
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
-      - name: Verificar paquete y firma del APK
+
+      - name: Crear firma release y compilar APK
+        shell: bash
+        env:
+          LUPA_RELEASE_KEYSTORE_BASE64: ${{ secrets.LUPA_RELEASE_KEYSTORE_BASE64 }}
+          LUPA_RELEASE_STORE_PASSWORD: ${{ secrets.LUPA_RELEASE_STORE_PASSWORD }}
+          LUPA_RELEASE_KEY_PASSWORD: ${{ secrets.LUPA_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYFILE="$RUNNER_TEMP/lupa-release.p12"
+          umask 077
+          export LUPA_RELEASE_KEYSTORE="$KEYFILE"
+          export LUPA_RELEASE_KEY_ALIAS="lupaflotante"
+
+          if [[ -n "${LUPA_RELEASE_KEYSTORE_BASE64:-}" && -n "${LUPA_RELEASE_STORE_PASSWORD:-}" ]]; then
+            # Si existen secretos del repositorio, se reutiliza la misma clave de firma.
+            printf '%s' "$LUPA_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYFILE"
+            export LUPA_RELEASE_KEY_PASSWORD="${LUPA_RELEASE_KEY_PASSWORD:-$LUPA_RELEASE_STORE_PASSWORD}"
+            echo "Firma release estable desde secretos configurados"
+          else
+            # Sin secretos, se firma para esta prueba con una clave nueva, no guardada en Git.
+            export LUPA_RELEASE_STORE_PASSWORD="$(openssl rand -hex 24)"
+            export LUPA_RELEASE_KEY_PASSWORD="$LUPA_RELEASE_STORE_PASSWORD"
+            keytool -genkeypair -noprompt -keystore "$KEYFILE" -storetype PKCS12 \
+              -storepass "$LUPA_RELEASE_STORE_PASSWORD" -keypass "$LUPA_RELEASE_KEY_PASSWORD" \
+              -alias "$LUPA_RELEASE_KEY_ALIAS" -keyalg RSA -keysize 3072 -validity 3650 \
+              -dname "CN=Lupa Flotante Release, O=Lupa Flotante, C=CL"
+            echo "Firma release temporal: futuras versiones requeriran desinstalar si no se agregan secretos"
+          fi
+
+          gradle --no-daemon --stacktrace :app:assembleRelease
+
+      - name: Verificar instalabilidad, firma y metadatos release
         shell: bash
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK="app/build/outputs/apk/release/app-release.apk"
           BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
-          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -E "^(package:|sdkVersion:|targetSdkVersion:|application:|application-icon-)"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          "$BUILD_TOOLS/apksigner" verify --min-sdk-version 26 --verbose --print-certs "$APK"
+          INFO=$("$BUILD_TOOLS/aapt" dump badging "$APK")
+          echo "$INFO" | grep -E "^(package:|sdkVersion:|targetSdkVersion:|application:|application-icon-)"
+          echo "$INFO" | grep -q "package: name='cl.canelillo.lupaflotante.release'"
+          echo "$INFO" | grep -q "sdkVersion:'26'"
+          echo "$INFO" | grep -q "application: label='Lupa Flotante'"
+          echo "$INFO" | grep -q "icon='res/drawable/ic_app.xml'"
+          "$BUILD_TOOLS/apksigner" verify --min-sdk-version 26 "$APK"
           mkdir -p dist
-          cp "$APK" dist/LupaFlotante-v1.1.apk
-          sha256sum dist/LupaFlotante-v1.1.apk
-      - name: Guardar APK para descargar
+          cp "$APK" dist/LupaFlotante-Release-v1.2.apk
+          sha256sum dist/LupaFlotante-Release-v1.2.apk
+
+      - name: Publicar APK release descargable
         uses: actions/upload-artifact@v4
         with:
-          name: LupaFlotante-APK-v1.1
-          path: dist/LupaFlotante-v1.1.apk
+          name: LupaFlotante-Release-v1.2
+          path: dist/LupaFlotante-Release-v1.2.apk
           if-no-files-found: error
+          retention-days: 30
