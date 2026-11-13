@@ -10,7 +10,7 @@ jobs:
     name: Construir y verificar APK release
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Descargar codigo
@@ -76,7 +76,10 @@ jobs:
           echo "$INFO" | grep -q "package: name='cl.canelillo.lupaflotante.release'"
           echo "$INFO" | grep -q "sdkVersion:'26'"
           echo "$INFO" | grep -q "application: label='Lupa Flotante'"
-          echo "$INFO" | grep -q "icon='res/drawable/ic_app.xml'"
+          # El optimizador de recursos puede renombrar ic_app.xml (ej. res/qG.xml).
+          ICON=$(printf '%s\n' "$INFO" | sed -nE "s/^application: .* icon='([^']+)'.*/\\1/p" | head -1)
+          test -n "$ICON"
+          unzip -Z1 "$APK" | grep -Fx "$ICON"
           "$BUILD_TOOLS/apksigner" verify --min-sdk-version 26 "$APK"
           mkdir -p dist
           cp "$APK" dist/LupaFlotante-Release-v1.2.apk
@@ -89,3 +92,18 @@ jobs:
           path: dist/LupaFlotante-Release-v1.2.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Crear descarga directa en GitHub Releases
+        shell: bash
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.2 >/dev/null 2>&1; then
+            echo "Release v1.2 ya publicada; no se sobrescribe su firma."
+          else
+            gh release create v1.2 dist/LupaFlotante-Release-v1.2.apk \
+              --title "Lupa Flotante v1.2 - APK Release" \
+              --notes "APK release firmado, Android 8+, icono de lupa. Paquete cl.canelillo.lupaflotante.release. Version inicial firmada con clave temporal, futuras actualizaciones requeriran firma persistente o reinstalar. Descarga el archivo .apk directamente, no el zip de Actions."
+          fi
