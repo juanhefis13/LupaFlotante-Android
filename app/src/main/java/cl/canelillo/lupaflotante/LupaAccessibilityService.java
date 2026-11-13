@@ -12,13 +12,14 @@ import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.SystemClock;
+import android.util.DisplayMetrics;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
-import android.widget.TextView;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 /** Servicio sin lectura de ventanas ni registro de acciones: solo lupa y burbuja. */
@@ -31,7 +32,7 @@ public class LupaAccessibilityService extends AccessibilityService {
     private SharedPreferences preferences;
     private WindowManager windowManager;
     private WindowManager.LayoutParams params;
-    private TextView bubble;
+    private ImageView bubble;
     private GestureDetector gestures;
     private float downX, downY;
     private int fromX, fromY;
@@ -65,7 +66,7 @@ public class LupaAccessibilityService extends AccessibilityService {
     private void createBubble() {
         if (bubble != null || windowManager == null) return;
         int size = dp(66);
-        Rect screen = windowManager.getMaximumWindowMetrics().getBounds();
+        Rect screen = getScreenBounds();
         params = new WindowManager.LayoutParams(size, size,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -75,11 +76,10 @@ public class LupaAccessibilityService extends AccessibilityService {
         params.y = preferences.getInt("bubble_y", screen.height() / 3);
         clamp();
 
-        bubble = new TextView(this);
-        bubble.setText("⌕");
-        bubble.setTextSize(34);
-        bubble.setTextColor(Color.WHITE);
-        bubble.setGravity(Gravity.CENTER);
+        bubble = new ImageView(this);
+        bubble.setImageResource(R.drawable.ic_lupa_blanca);
+        bubble.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        bubble.setPadding(dp(12), dp(12), dp(12), dp(12));
         bubble.setElevation(dp(6));
         bubble.setContentDescription("Lupa flotante. Tocar para ampliar, arrastrar para mover, doble toque para cambiar el zoom.");
         updateBubbleColor();
@@ -145,9 +145,16 @@ public class LupaAccessibilityService extends AccessibilityService {
         }
     }
 
+    private Rect getScreenBounds() {
+        if (Build.VERSION.SDK_INT >= 30) return windowManager.getMaximumWindowMetrics().getBounds();
+        DisplayMetrics metrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getRealMetrics(metrics);
+        return new Rect(0, 0, metrics.widthPixels, metrics.heightPixels);
+    }
+
     private void clamp() {
         if (params == null) return;
-        Rect screen = windowManager.getMaximumWindowMetrics().getBounds();
+        Rect screen = getScreenBounds();
         params.x = Math.max(0, Math.min(screen.width() - params.width, params.x));
         params.y = Math.max(0, Math.min(screen.height() - params.height, params.y));
     }
@@ -175,6 +182,16 @@ public class LupaAccessibilityService extends AccessibilityService {
         float scale = preferences.getFloat(KEY_SCALE, 3f);
         float cx = params.x + params.width / 2f;
         float cy = params.y + params.height / 2f;
+        if (Build.VERSION.SDK_INT < 33) {
+            try {
+                MagnificationController controller = getMagnificationController();
+                boolean scaleOk = controller.setScale(scale, animate);
+                boolean centerOk = controller.setCenter(cx, cy, animate);
+                return scaleOk && centerOk;
+            } catch (RuntimeException ignored) {
+                return false;
+            }
+        }
         boolean windowSupported = getPackageManager().hasSystemFeature(PackageManager.FEATURE_WINDOW_MAGNIFICATION);
         int mode = windowSupported ? MagnificationConfig.MAGNIFICATION_MODE_WINDOW
                                    : MagnificationConfig.MAGNIFICATION_MODE_FULLSCREEN;
@@ -201,8 +218,10 @@ public class LupaAccessibilityService extends AccessibilityService {
 
     private void disableMagnification() {
         if (active) {
-            try { getMagnificationController().resetCurrentMagnification(true); }
-            catch (RuntimeException ignored) { }
+            try {
+                if (Build.VERSION.SDK_INT >= 33) getMagnificationController().resetCurrentMagnification(true);
+                else getMagnificationController().reset(true);
+            } catch (RuntimeException ignored) { }
         }
         active = false;
         updateBubbleColor();
