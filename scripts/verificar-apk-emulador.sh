@@ -38,4 +38,19 @@ if printf '%s\n' "$LOG" | grep -F "Process: $PKG"; then
   exit 1
 fi
 
-echo "PRUEBA COMPLETADA: APK instalada, app visible y proceso funcionando."
+
+echo "== Activar servicio de accesibilidad para probar lupa ==="
+SERVICE="$PKG/cl.canelillo.lupaflotante.LupaAccessibilityService"
+adb shell settings put secure enabled_accessibility_services "$SERVICE"
+adb shell settings put secure accessibility_enabled 1
+sleep 2
+adb shell dumpsys accessibility | grep -F "$PKG" | head -8 || true
+
+echo "== Capturar pantalla y comprobar que hay interfaz ==="
+mkdir -p capturas
+API=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+adb exec-out screencap -p > "capturas/LupaFlotante-Android-API${API}.png"
+test -s "capturas/LupaFlotante-Android-API${API}.png"
+echo "CAPTURA_OK: capturas/LupaFlotante-Android-API${API}.png"
+
+echo "PRUEBA COMPLETADA: APK instalada, app visible, servicio solicitado y proceso funcionando."
