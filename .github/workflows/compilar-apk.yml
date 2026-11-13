@@ -1,9 +1,9 @@
 name: Compilar APK release firmado de Lupa Flotante
 
+# Compilación manual hasta configurar una clave de firma permanente.
+# Evita generar APKs con firmas diferentes en cada push.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   release:
