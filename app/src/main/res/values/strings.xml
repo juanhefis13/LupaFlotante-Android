@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lupa Flotante</string>
+    <string name="accessibility_summary">Muestra una lupa flotante para ampliar la pantalla.</string>
+    <string name="accessibility_description">Este servicio controla la ampliación visual y muestra una burbuja. No lee texto, no registra acciones, no captura pantallas y no transmite datos.</string>
+</resources>
