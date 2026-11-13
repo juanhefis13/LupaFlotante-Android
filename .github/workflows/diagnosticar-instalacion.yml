@@ -1,0 +1,58 @@
+name: Diagnosticar instalacion del APK en Android
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/diagnosticar-instalacion.yml'
+
+jobs:
+  instalar-y-abrir:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Descargar archivos de test
+        uses: actions/checkout@v4
+      - name: Descargar el APK exacto publicado
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o app-a-probar.apk 'https://github.com/juanhefis13/LupaFlotante-Android/releases/download/v1.2/LupaFlotante-Release-v1.2.apk'
+          echo '99570eca886d5da1025d9fcaae7ecfac500e1984e82c6bdf58897ceb4c4ad406  app-a-probar.apk' | sha256sum -c -
+          unzip -t app-a-probar.apk | tail -2
+      - name: Permitir KVM para emulador
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Instalar y abrir la APK publicada en Android 14
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-boot-timeout: 600
+          script: |
+            set -e
+            echo "Android en dispositivo:"
+            adb shell getprop ro.build.version.release
+            echo "INSTALACION EXACTA DEL APK"
+            adb install -r app-a-probar.apk
+            echo "Verificar el paquete instalado"
+            adb shell pm path cl.canelillo.lupaflotante.release
+            adb logcat -c
+            echo "ABRIR LA APP"
+            adb shell am start -W -n cl.canelillo.lupaflotante.release/cl.canelillo.lupaflotante.MainActivity
+            sleep 3
+            echo "Verificar proceso de la app"
+            adb shell pidof cl.canelillo.lupaflotante.release
+            adb shell dumpsys activity activities | grep -E 'cl.canelillo.lupaflotante.release|mResumedActivity' | head -15
+            if adb logcat -d -s AndroidRuntime:E | grep -E 'FATAL EXCEPTION|Process: cl.canelillo.lupaflotante.release'; then
+              echo 'Fallo de ejecucion detectado'
+              exit 1
+            fi
+            echo "APK INSTALADA Y APP ABIERTA SIN FALLOS"
