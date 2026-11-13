@@ -46,3 +46,11 @@ No asumir que el problema es la versión de Android. Revisar, según el teléfon
 - **La firma de la release v1.2 es temporal y no se almacena en este repositorio público.** Para permitir actualizaciones instalables sin desinstalar, configurar en GitHub Actions una clave permanente protegida por secretos antes de publicar una nueva release.
 - No se transmite información ni se requiere Internet para la aplicación.
 
+
+## Pruebas automáticas ejecutadas (13 noviembre 2026)
+
+Se descargó el APK **exactamente publicado** de v1.2 y se verificó su SHA-256. Las pruebas `adb install` y `am start` fueron correctas en emuladores Android 13, 14, 15 y 16; en Android 13 y 16 también se activó el servicio de accesibilidad y se tomó una captura antes y después de pulsar la burbuja, comprobándose visualmente la ampliación.
+
+[Ver pruebas de instalación y zoom](https://github.com/juanhefis13/LupaFlotante-Android/actions/workflows/diagnosticar-instalacion.yml).
+
+**Limitación importante:** esas pruebas confirman que el proyecto es instalable y que el zoom responde en los emuladores probados; no comprueban la instalación en teléfonos reales de diferentes fabricantes. Si el teléfono indica «No se instaló la app», hay que registrar el código de error del instalador del dispositivo. No tiene sentido cambiar de SDK, modificar arbitrariamente el peso del APK o regenerar otra firma sin ese dato.
