@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/diagnosticar-instalacion.yml'
+      - 'scripts/verificar-apk-emulador.sh'
 
 jobs:
   instalar-y-abrir:
