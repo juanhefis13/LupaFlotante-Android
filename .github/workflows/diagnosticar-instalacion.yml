@@ -10,6 +10,10 @@ jobs:
   instalar-y-abrir:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [34, 35]
     permissions:
       contents: read
     steps:
@@ -28,31 +32,12 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Instalar y abrir la APK publicada en Android 14
+      - name: Instalar y abrir la APK publicada en Android API ${{ matrix.api-level }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           profile: pixel_5
           emulator-boot-timeout: 600
-          script: |
-            set -e
-            echo "Android en dispositivo:"
-            adb shell getprop ro.build.version.release
-            echo "INSTALACION EXACTA DEL APK"
-            adb install -r app-a-probar.apk
-            echo "Verificar el paquete instalado"
-            adb shell pm path cl.canelillo.lupaflotante.release
-            adb logcat -c
-            echo "ABRIR LA APP"
-            adb shell am start -W -n cl.canelillo.lupaflotante.release/cl.canelillo.lupaflotante.MainActivity
-            sleep 3
-            echo "Verificar proceso de la app"
-            adb shell pidof cl.canelillo.lupaflotante.release
-            adb shell dumpsys activity activities | grep -E 'cl.canelillo.lupaflotante.release|mResumedActivity' | head -15
-            if adb logcat -d -s AndroidRuntime:E | grep -E 'FATAL EXCEPTION|Process: cl.canelillo.lupaflotante.release'; then
-              echo 'Fallo de ejecucion detectado'
-              exit 1
-            fi
-            echo "APK INSTALADA Y APP ABIERTA SIN FALLOS"
+          script: bash scripts/verificar-apk-emulador.sh app-a-probar.apk
