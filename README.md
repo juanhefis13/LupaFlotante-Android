@@ -1,26 +1,48 @@
 # Lupa Flotante — Android
 
-Aplicación de ampliación para Android 8 y posteriores, con una burbuja de accesibilidad que aparece sobre otras aplicaciones.
+Aplicación nativa para controlar la ampliación del sistema Android mediante un botón flotante de accesibilidad, sin tomar capturas ni leer contenido de otras apps.
 
-## Cómo funciona
-- Un toque en la burbuja activa o desactiva la ampliación.
-- Arrastrar mueve la burbuja y el centro de ampliación.
-- Doble toque alterna entre 2×, 3× y 4×.
-- Si el dispositivo admite la ampliación de ventana, la usa; de lo contrario intenta ampliación de pantalla completa.
-- No captura pantalla, no lee el contenido de otras aplicaciones, no usa red.
+## Instalación: APK release oficial del proyecto
 
-## Obtener APK
-Abre **Actions > Compilar APK de Lupa Flotante** y ejecuta **Run workflow** (o espera una ejecución automática por push). Al completarse, descarga el artefacto **LupaFlotante-APK-v1.1** y descomprímelo para encontrar `LupaFlotante-v1.1.apk`.
+**Archivo que debes descargar:** [LupaFlotante-Release-v1.2.apk](https://github.com/juanhefis13/LupaFlotante-Android/releases/download/v1.2/LupaFlotante-Release-v1.2.apk)
 
-## Instalar
-Instala el APK en Android 8+, abre la aplicación y habilita **Lupa Flotante** en los ajustes de Accesibilidad. Algunos Android 13+ requieren habilitar «Permitir configuración restringida» desde Información de la aplicación antes de activar un servicio de accesibilidad instalado por APK. Actívalo únicamente si confías en la aplicación.
+- Descargar desde un navegador normal, como Chrome, sin descomprimir ni renombrar el archivo.
+- Instalar el archivo `.apk` desde Descargas.
+- Si aparece una ventana de autorización, habilitar instalación desde esa fuente **solo si confías en la APK**.
+- Abrir Lupa Flotante > Activar en Accesibilidad para mostrar la burbuja.
+- En Android 13+ el sistema puede pedir habilitar la configuración restringida de accesibilidad para aplicaciones instaladas fuera de la tienda.
 
-**Prototipo:** el control depende del soporte de cada fabricante y se debe probar en el dispositivo real. El APK de debug usa firma de prueba, no es una versión de distribución.
+La app tiene un icono azul con una lupa blanca. Compatibilidad declarada: Android 8 y superior.
 
-## Si aparece «No se instaló la app»
+## Controles
 
-El APK debe descargarse completo como archivo **.apk**, no como ZIP. Antes de instalar, revisa si existe otra versión de Lupa Flotante instalada: una versión firmada con otra clave de depuración no puede actualizarse encima de ella. Desinstalar la versión previa permite instalar desde cero, pero elimina la configuración guardada de esa app. Comprueba también que el administrador de archivos o navegador tenga permiso para instalar aplicaciones desde esa fuente y que el sistema no bloquee el APK mediante políticas de seguridad.
+- Toque en la burbuja: activar/desactivar ampliación.
+- Arrastrar: mover la burbuja y el centro del zoom.
+- Doble toque: alternar entre aumentos predefinidos.
+- Ajustar el aumento desde la pantalla principal.
 
-Para diagnosticar un error real de instalación con ADB conectado al teléfono: `adb install -r LupaFlotante-v1.1.apk`. La salida muestra el motivo (por ejemplo, `INSTALL_FAILED_UPDATE_INCOMPATIBLE` o `INSTALL_FAILED_VERSION_DOWNGRADE`). No hay que desactivar protección del sistema si el APK no es de confianza.
+## Verificación técnica y limitaciones
 
-En CI se verifica que el APK tenga firma válida y que incluya el icono y las versiones SDK declaradas. **Una compilación correcta no equivale a una prueba de instalación en todos los teléfonos.**
+- Compilación `assembleRelease`, firma APK v2 y verificación de metadatos ejecutadas.
+- La APK release publicada de v1.2 tiene SHA-256 `99570eca886d5da1025d9fcaae7ecfac500e1984e82c6bdf58897ceb4c4ad406`.
+- Las pruebas en emulador están en [Actions](https://github.com/juanhefis13/LupaFlotante-Android/actions/workflows/diagnosticar-instalacion.yml).
+- **Importante**: instalación y apertura en un emulador no garantizan instalación en todos los fabricantes y modelos; el sistema del teléfono puede bloquear APKs externas.
+- Una app nativa pequeña puede pesar unos KB si no lleva bibliotecas externas ni recursos multimedia.
+
+## Si Android indica «No se instaló la app»
+
+No asumir que el problema es la versión de Android. Revisar, según el teléfono:
+
+1. Confirmar que el archivo de Descargas es `LupaFlotante-Release-v1.2.apk`, no un ZIP ni un archivo HTML.
+2. Confirmar que el sistema permite instalar APKs desde el navegador o gestor de archivos elegido.
+3. Verificar la presencia de otra aplicación instalada con el **mismo identificador** y firma diferente. La release v1.2 usa el identificador `cl.canelillo.lupaflotante.release`, diferente de los APK de depuración anteriores.
+4. Revisar mensajes del sistema de seguridad del fabricante. Evitar desactivar protecciones de seguridad sin entender el bloqueo.
+5. Para obtener la causa exacta, con teléfono y ADB autorizados: `adb install -r LupaFlotante-Release-v1.2.apk`. Ese comando informa el código de fallo real.
+
+## Para desarrolladores
+
+- Código: Java Android nativo, minSdk 26.
+- Compilación release en GitHub Actions: manual.
+- **La firma de la release v1.2 es temporal y no se almacena en este repositorio público.** Para permitir actualizaciones instalables sin desinstalar, configurar en GitHub Actions una clave permanente protegida por secretos antes de publicar una nueva release.
+- No se transmite información ni se requiere Internet para la aplicación.
+
