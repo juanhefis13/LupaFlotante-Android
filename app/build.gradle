@@ -1,15 +1,40 @@
 plugins { id 'com.android.application' }
 
+// La compilacion release usa una clave de firma externa, nunca incluida en el repositorio.
 android {
     namespace 'cl.canelillo.lupaflotante'
     compileSdk 35
+
     defaultConfig {
         applicationId 'cl.canelillo.lupaflotante'
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName '1.1'
+        versionCode 3
+        versionName '1.2'
     }
+
+    signingConfigs {
+        release {
+            def keyPath = System.getenv('LUPA_RELEASE_KEYSTORE')
+            if (keyPath) {
+                storeFile file(keyPath)
+                storePassword System.getenv('LUPA_RELEASE_STORE_PASSWORD')
+                keyAlias System.getenv('LUPA_RELEASE_KEY_ALIAS') ?: 'lupaflotante'
+                keyPassword System.getenv('LUPA_RELEASE_KEY_PASSWORD') ?: System.getenv('LUPA_RELEASE_STORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // ID independiente de las compilaciones debug anteriores: evita conflictos de firma.
+            applicationIdSuffix '.release'
+            debuggable false
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
